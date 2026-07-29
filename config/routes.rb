@@ -13,4 +13,5 @@ Rails.application.routes.draw do
   root "storms#index"
 
   get "live" => "live#index"
+  get "national" => "national#index"
 end

@@ -1,0 +1,59 @@
+<% content_for :head do %>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="">
+<% end %>
+
+<header class="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-4 pb-16 pt-12 text-white sm:px-6">
+  <div class="mx-auto flex max-w-6xl items-center gap-4">
+    <svg class="h-10 w-10 flex-shrink-0 text-indigo-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <circle cx="12" cy="12" r="9" stroke-opacity="0.35"/>
+      <circle cx="12" cy="12" r="5.5" stroke-opacity="0.6"/>
+      <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/>
+    </svg>
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">National Tornado Probability Heatmap</h1>
+      <p class="mt-1 text-sm text-slate-300">Peak tornado probability across every currently-reporting radar site. Proof of concept — overlapping coverage between adjacent sites is expected.</p>
+    </div>
+  </div>
+</header>
+
+<div data-controller="national-heatmap-map"
+     data-national-heatmap-map-api-base-url-value="<%= @radar_api_base_url %>"
+     class="mx-auto -mt-10 max-w-6xl px-4 pb-16 sm:px-6">
+
+  <div class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <p class="text-sm font-medium text-slate-700">Status</p>
+      <p data-national-heatmap-map-target="loading" class="mt-1 hidden text-xs text-slate-500">
+        <span class="mr-1.5 inline-block h-3 w-3 align-[-2px] animate-spin rounded-full border-2 border-slate-300 border-t-indigo-500"></span>
+        Fetching all reporting sites… this can take a few seconds.
+      </p>
+      <p data-national-heatmap-map-target="status" class="mt-1 hidden text-xs text-slate-500"></p>
+    </div>
+    <div class="flex w-full items-center gap-4 sm:w-auto">
+      <label class="flex items-center gap-1.5 text-sm text-slate-700">
+        <input type="checkbox"
+               checked
+               data-national-heatmap-map-target="radarImageToggle"
+               data-action="change->national-heatmap-map#toggleRadarImages"
+               class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+        Reflectivity images
+      </label>
+      <button type="button"
+              data-national-heatmap-map-target="refreshButton"
+              data-action="click->national-heatmap-map#refresh"
+              class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5">
+    <div class="border-b border-slate-100 px-5 py-3">
+      <h2 class="text-sm font-semibold text-slate-700">Nationwide Density</h2>
+      <p class="text-xs text-slate-400">Small markers show each radar site's approximate location — hover one for its exact peak probability. Color scale is intentionally capped conservatively — most areas should stay cool/blue, with warm colors reserved for genuinely extreme readings.</p>
+    </div>
+    <div data-national-heatmap-map-target="map" id="national-map" class="h-[600px] w-full"></div>
+  </div>
+</div>

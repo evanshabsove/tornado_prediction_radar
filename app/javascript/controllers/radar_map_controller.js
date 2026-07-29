@@ -16,8 +16,18 @@ function tierFor(probability) {
   return "low"
 }
 
+const MODEL_LABELS = {
+  no_madis: "No MADIS",
+  madis: "MADIS",
+  madis_film: "MADIS Film"
+}
+
+// Order both the badge row and the marker-color fallback chain.
+const MODEL_ORDER = ["no_madis", "madis", "madis_film"]
+const MARKER_MODEL_PRIORITY = ["madis_film", "madis", "no_madis"]
+
 export default class extends Controller {
-  static targets = ["map", "probability", "placeholder", "loading", "error"]
+  static targets = ["map", "predictions", "placeholder", "loading", "error"]
   static values = { apiBaseUrl: String }
 
   connect() {
@@ -60,8 +70,8 @@ export default class extends Controller {
     this.clearMapLayers()
 
     const [lon, lat] = data.geojson.coordinates
-    const tier = tierFor(data.probability)
-    const pct = (data.probability * 100).toFixed(1) + "%"
+    const primary = this.primaryPrediction(data.predictions)
+    const tier = tierFor(primary.probability)
 
     this.marker = L.circleMarker([lat, lon], {
       radius: 10,
@@ -70,12 +80,15 @@ export default class extends Controller {
       fillColor: TIERS[tier].markerColor,
       fillOpacity: 0.9
     }).addTo(this.map)
-    this.marker.bindPopup(`Storm ${data.storm_id}<br>Tornado probability: ${pct}`).openPopup()
+
+    const popupLines = MODEL_ORDER.map((key) => `${MODEL_LABELS[key]}: ${this.formatPct(data.predictions[key])}`).join(
+      "<br>"
+    )
+    this.marker.bindPopup(`Storm ${data.storm_id}<br>${popupLines}`).openPopup()
 
     this.toggleHidden(this.placeholderTarget, true)
-    this.probabilityTarget.textContent = `Storm ${data.storm_id} · ${pct}`
-    this.probabilityTarget.className =
-      `inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold ring-1 ring-inset ${TIERS[tier].badgeClass}`
+    this.predictionsTarget.innerHTML = MODEL_ORDER.map((key) => this.renderBadge(key, data.predictions[key])).join("")
+    this.predictionsTarget.className = "flex flex-col items-end gap-1.5"
 
     if (data.radar_image_url && data.radar_image_bounds) {
       this.overlay = L.imageOverlay(data.radar_image_url, data.radar_image_bounds, { opacity: 0.6 }).addTo(
@@ -86,6 +99,27 @@ export default class extends Controller {
       this.overlay = null
       this.map.setView([lat, lon], 9)
     }
+  }
+
+  primaryPrediction(predictions) {
+    for (const key of MARKER_MODEL_PRIORITY) {
+      if (predictions[key]?.available) return predictions[key]
+    }
+    return { probability: 0, available: false }
+  }
+
+  renderBadge(key, prediction) {
+    const label = MODEL_LABELS[key]
+    if (!prediction || !prediction.available) {
+      return `<span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-slate-400 ring-1 ring-inset ring-slate-200">${label}: N/A</span>`
+    }
+    const tier = tierFor(prediction.probability)
+    const pct = this.formatPct(prediction)
+    return `<span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${TIERS[tier].badgeClass}">${label}: ${pct}</span>`
+  }
+
+  formatPct(prediction) {
+    return prediction && prediction.available ? (prediction.probability * 100).toFixed(1) + "%" : "N/A"
   }
 
   clearMapLayers() {
