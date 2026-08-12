@@ -100,6 +100,10 @@ export default class extends Controller {
       )
     }
 
+    // Storm-triggered detection can return zero tiles on a clear-air volume, so
+    // there may be nothing to add to the map or fit bounds to.
+    const hasTiles = data.tiles.features.length > 0
+
     // Tiles are added after the image overlay so they render on top of it.
     this.heatmapLayer = L.geoJSON(data.tiles, {
       pointToLayer: (feature) => {
@@ -114,11 +118,13 @@ export default class extends Controller {
       }
     }).addTo(this.map)
 
-    if (fitBounds) this.map.fitBounds(this.heatmapLayer.getBounds())
+    if (fitBounds && hasTiles) this.map.fitBounds(this.heatmapLayer.getBounds())
 
     const staleness = Math.round(data.staleness_seconds)
     if (staleness > STALE_THRESHOLD_SECONDS) {
       this.showStatus("stale", `Updated ${staleness}s ago — data may be stuck (ingestion loop might be down)`)
+    } else if (!hasTiles) {
+      this.showStatus("ok", `Updated ${staleness}s ago — no storm signatures detected at this site`)
     } else {
       this.showStatus("ok", `Updated ${staleness}s ago`)
     }
