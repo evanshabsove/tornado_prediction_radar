@@ -14,4 +14,5 @@ Rails.application.routes.draw do
 
   get "live" => "live#index"
   get "national" => "national#index"
+  get "forecast" => "forecasts#index"
 end

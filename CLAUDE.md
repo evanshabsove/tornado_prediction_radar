@@ -71,3 +71,37 @@ external Radar API's response payloads.
 **Deployment**: Dockerized via Kamal (`config/deploy.yml`, `.kamal/`), single web server, sqlite
 storage on a persistent volume, Solid Queue supervisor run in-process with Puma
 (`SOLID_QUEUE_IN_PUMA=true`).
+
+## Forecast pages
+
+A second feature: a `/forecast` page backed by a *separate* Flask API (the HRRR U-Net ensemble from the sibling
+`short_term_tornado_predictor` repo, base URL via `FORECAST_API_BASE_URL`, default `http://localhost:5070`), not the Radar API
+above. The tickets, the API contract and the tier evidence are in `docs/forecast/` (start with `docs/forecast/README.md`; those
+files are snapshots and still say port 5060). Tickets 9 (page) and 10 (SPC verification overlay) are built, and the Rails half of 11
+is in `config/deploy.yml`; what remains of 11 is deploying the Python API itself. Follow the existing conventions (controller exposes
+a base-URL ivar, Stimulus `fetch()`es the API, custom DOM events between controllers). Do not reuse `radar_map_controller.js`'s
+probability cutoffs; the forecast API sends tiers per cell and the client never computes them.
+
+The page is `ForecastsController#index` + four Stimulus controllers on one root element, with shared helpers in
+`app/javascript/lib/` (pinned as `lib/*` in `config/importmap.rb`):
+
+- **`forecast_select_controller.js`** — a Live/Replay mode toggle, the run `<select>` (live: `/forecasts`, polled every 5 minutes;
+  replay: `/replays`, grouped by case) and the two 4-hour bin buttons. Dispatches `forecast-select:selected` with
+  `{ mode, id, initTime, bin, stale, latest }`.
+- **`forecast_map_controller.js`** — listens for that event, fetches `/forecast/<id>` or `/replay/<id>` (separate namespaces in the
+  API) and `/grid` (once), and draws one Leaflet canvas polygon per cell coloured by the API's tier code (`lib/forecast_tiers.js`).
+  Cells are non-interactive; hover is a bounding-box lookup (`cellAt`) because per-layer hit-testing on ~11k canvas paths is slow.
+  Age is computed client-side from `init_time` (a revalidated 304 leaves the body's `age_seconds` old). Replays show the API's
+  `note` and a "Retrospective replay" badge instead of age/staleness. Also draws SPC reports (SVG, own pane above the cells) when
+  it receives `forecast-reports:loaded`, and removes them on `forecast-reports:cleared`.
+- **`forecast_reports_controller.js`** — replay only: fetches `/reports` for the selected bin's valid window and dispatches
+  `forecast-reports:loaded` / `cleared`. It never touches the map. Timestamps sent to the API must be `YYYY-MM-DDTHH:MM:SSZ`
+  (`binWindow` strips the `.000` that `toISOString` adds; the API answers 400 otherwise).
+- **`forecast_legend_controller.js`** — renders `/tiers` (hit rate, area share, capture share, wording caveats). No number in
+  the legend is hardcoded.
+
+**Browsers refuse to connect to port 5060** (SIP; Chrome reports `ERR_UNSAFE_PORT`), so a page that `fetch()`es the API there
+fails with "Failed to fetch" while `curl` works. Run the API with `PORT=5070 python api/app.py`; that is also this app's default.
+In production the URL must be public, https if this app is, and the API's `FORECAST_CORS_ORIGINS` must allow this app's origin
+(see the comments in `config/deploy.yml`, which sets both `FORECAST_API_BASE_URL` and `RADAR_API_BASE_URL`; both are placeholders until
+the real hosts are chosen).

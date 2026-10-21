@@ -45,6 +45,21 @@ env:
     # When you start using multiple servers, you should split out job processing to a dedicated machine.
     SOLID_QUEUE_IN_PUMA: true
 
+    # Base URL of the radar API (the tornet Flask app behind the Historical, Live and National
+    # pages). Same rules as the forecast API below: visitors' browsers fetch() it directly, so it
+    # must be public, https if this app is, and allow this app's origin in its CORS settings.
+    # If unset, the app falls back to http://localhost:5050, which only works on a developer machine.
+    RADAR_API_BASE_URL: https://radar-api.example.com
+
+    # Base URL of the forecast API (the Flask app from short_term_tornado_predictor). Unlike the
+    # database or queue settings, this is read by visitors' browsers, which fetch() it directly:
+    #   - it must be reachable from the public internet, not only from this server;
+    #   - it must be https:// if this app is served over https (browsers block mixed content);
+    #   - the API must allow this app's origin, e.g. FORECAST_CORS_ORIGINS=https://app.example.com;
+    #   - avoid ports browsers refuse to connect to (notably 5060 and 5061).
+    # If unset, the app falls back to http://localhost:5070, which only works on a developer machine.
+    FORECAST_API_BASE_URL: https://forecast-api.example.com
+
     # Set number of processes dedicated to Solid Queue (default: 1)
     # JOB_CONCURRENCY: 3
 
