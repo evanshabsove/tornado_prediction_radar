@@ -47,7 +47,7 @@ export default class extends Controller {
       else this.applyReplays(data)
     } catch (err) {
       console.error("[forecast-select]", err)
-      if (mode === this.mode) this.showError(`Could not load ${mode} runs. Is the forecast API running?`)
+      if (mode === this.mode) this.showError(`Could not load ${mode} runs (${err.message}). Is the forecast API running at ${this.apiBaseUrlValue}?`)
     } finally {
       this.toggleHidden(this.loadingTarget, true)
     }
